@@ -6,6 +6,7 @@ import { BLOCK_TYPES } from '../domain/blockTypes.js';
 import { generateBlock, generateVariants } from '../services/generation.js';
 import { critiqueBlock, reviewerFor } from '../services/critique.js';
 import { AbortedError } from '../services/providers/index.js';
+import { formatFailure } from '../services/diagnostics.js';
 
 /**
  * Modularer Struktur-Builder (Anforderung 3) und einziger Ort, an dem Läufe
@@ -46,11 +47,7 @@ export default function StructureBuilder() {
         dispatch({ type: 'GENERATION_ABORTED', blockId });
         return;
       }
-      dispatch({
-        ...failedAction,
-        blockId,
-        error: error instanceof Error ? error.message : String(error)
-      });
+      dispatch({ ...failedAction, blockId, error: formatFailure(error) });
     },
     [dispatch]
   );
@@ -140,12 +137,7 @@ export default function StructureBuilder() {
         if (error instanceof AbortedError || error?.name === 'AbortError') {
           dispatch({ type: 'CLEAR_CRITIQUE', blockId: block.id });
         } else {
-          dispatch({
-            type: 'CRITIQUE_FAILED',
-            blockId: block.id,
-            reviewer,
-            error: error instanceof Error ? error.message : String(error)
-          });
+          dispatch({ type: 'CRITIQUE_FAILED', blockId: block.id, reviewer, error: formatFailure(error) });
         }
       } finally {
         finish(block.id);

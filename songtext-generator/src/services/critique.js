@@ -59,5 +59,6 @@ export function parseCritique(raw) {
 export async function critiqueBlock({ state, block, reviewer, keys, signal, onRetry }) {
   const request = buildCritiqueRequest(state, block, reviewer);
   const raw = await callProvider(request, keys, { signal, onRetry });
+  if (!raw) throw new Error('Leere Antwort vom Prüfer - meist ein Safety-Filter.');
   return { findings: parseCritique(raw), reviewer, raw };
 }

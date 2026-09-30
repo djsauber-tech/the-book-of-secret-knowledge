@@ -11,12 +11,26 @@ const MAX_ATTEMPTS = 4;
 const BASE_DELAY_MS = 1000;
 
 export class ProviderError extends Error {
-  constructor(message, { status = null, retryable = false, vendor = '' } = {}) {
+  constructor(message, { status = null, retryable = false, vendor = '', body = null, network = false } = {}) {
     super(message);
     this.name = 'ProviderError';
     this.status = status;
     this.retryable = retryable;
     this.vendor = vendor;
+    // Rohantwort des Anbieters - die Diagnose liest daraus den Fehlercode.
+    this.body = body;
+    // true, wenn die Anfrage gar nicht erst rausging (offline, CORS, DNS).
+    this.network = network;
+  }
+}
+
+/** Antwortkörper als Objekt, wenn er JSON ist - sonst als Text. */
+function parseBody(text) {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
   }
 }
 
@@ -60,10 +74,10 @@ function backoffMs(attempt, response) {
  * fetch mit Retry. Wirft ProviderError mit lesbarer Meldung, AbortedError bei
  * Abbruch durch den Nutzer. `onRetry` meldet Wartezeiten an die UI.
  */
-export async function fetchWithRetry(url, init, { signal, vendor, onRetry } = {}) {
+export async function fetchWithRetry(url, init, { signal, vendor, onRetry, attempts = MAX_ATTEMPTS } = {}) {
   let lastError = null;
 
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
     if (signal?.aborted) throw new AbortedError();
 
     let response;
@@ -74,9 +88,10 @@ export async function fetchWithRetry(url, init, { signal, vendor, onRetry } = {}
       // Netzwerkfehler: einmal mehr versuchen, das ist oft nur ein Aussetzer.
       lastError = new ProviderError(`${vendor}: Netzwerkfehler (${error.message})`, {
         retryable: true,
-        vendor
+        vendor,
+        network: true
       });
-      if (attempt === MAX_ATTEMPTS) throw lastError;
+      if (attempt === attempts) throw lastError;
       onRetry?.({ attempt, delayMs: backoffMs(attempt, null), reason: 'Netzwerkfehler' });
       await wait(backoffMs(attempt, null), signal);
       continue;
@@ -87,11 +102,12 @@ export async function fetchWithRetry(url, init, { signal, vendor, onRetry } = {}
     const detail = await response.text().catch(() => '');
     const message = `${vendor} ${response.status}: ${detail.slice(0, 400) || response.statusText}`;
 
-    if (!RETRYABLE.has(response.status) || attempt === MAX_ATTEMPTS) {
+    if (!RETRYABLE.has(response.status) || attempt === attempts) {
       throw new ProviderError(message, {
         status: response.status,
         retryable: RETRYABLE.has(response.status),
-        vendor
+        vendor,
+        body: parseBody(detail)
       });
     }
 
@@ -101,7 +117,12 @@ export async function fetchWithRetry(url, init, { signal, vendor, onRetry } = {}
       delayMs,
       reason: response.status === 429 ? 'Rate-Limit' : `HTTP ${response.status}`
     });
-    lastError = new ProviderError(message, { status: response.status, retryable: true, vendor });
+    lastError = new ProviderError(message, {
+      status: response.status,
+      retryable: true,
+      vendor,
+      body: parseBody(detail)
+    });
     await wait(delayMs, signal);
   }
 

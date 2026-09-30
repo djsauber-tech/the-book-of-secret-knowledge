@@ -13,6 +13,7 @@ npm run dev       # http://localhost:5173
 npm run build     # Produktions-Build nach dist/
 npm run smoke     # Logik-Test ohne Netz: Prompts, Locks, Kritik, Silben, Export
 npm run ui-check  # End-to-End im Browser, beide APIs gefälscht (siehe unten)
+npm run diag-check # Fehlerdiagnose: gefälschte Fehlerantworten beider Anbieter
 ```
 
 `ui-check` braucht einen laufenden `npm run dev` in einem zweiten Terminal und
@@ -170,3 +171,28 @@ kann sie danebenliegen. Die Tooltips sagen „geschätzt" dazu.
   JSON-Export enthält **keine API-Keys** und keine laufbezogenen Daten
   (Varianten, Kritik, Verlauf); der Import prüft Kennung und Version, bevor er
   den Zustand ersetzt.
+
+## Erster Lauf und Fehlerdiagnose
+
+Im Settings-Panel steht pro Anbieter ein **Verbindung testen**-Knopf. Er macht
+einen minimalen echten Aufruf (ein Token) und meldet entweder `OK · Modell ·
+Latenz` oder den Grund im Klartext. Genau ein Versuch, ohne Retry — bei einem
+Test will niemand fünfzehn Sekunden auf ausgereizte Wiederholungen warten.
+
+Die vier Fälle, an denen ein erster Lauf üblicherweise scheitert, sind
+übersetzt — samt nächstem Schritt statt nackter Statuszeile:
+
+| Was passiert ist | Woran man es erkennt |
+|---|---|
+| Key wird abgelehnt | 401, `authentication_error`, oder Googles `API key not valid` |
+| Vom Browser blockiert | Anfrage geht gar nicht erst raus — CORS, Adblocker, Firmen-Proxy |
+| Modellname unbekannt | 404 / `not_found` — passiert nach jeder Modell-Umbenennung |
+| Guthaben bzw. Kontingent | `credit balance`, `quota` — bewusst getrennt vom Rate-Limit (429) |
+
+Dieselbe Übersetzung liegt unter der Fehlerleiste jedes Blocks, damit ein
+Fehler mitten im Schreiben genauso lesbar ist wie im Test.
+
+Die Klassifizierung sitzt in `services/diagnostics.js` und arbeitet auf dem
+Antwortkörper, den die Transportschicht am Fehler mitführt — nicht auf
+Textvergleichen der Fehlermeldung. `npm run smoke` prüft sie gegen die echten
+Nutzlasten beider Anbieter.

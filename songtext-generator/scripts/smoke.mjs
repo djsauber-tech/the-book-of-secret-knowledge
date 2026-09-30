@@ -176,4 +176,46 @@ e = songReducer(e, { type: 'ADOPT_VARIANT_LINE', blockId: eBlock.id, variantId: 
 assert.equal(e.blocks[1].lines.length, 3, 'Position 3 bleibt Position 3');
 assert.equal(textFromLines(e.blocks[1].lines), '\n\nv3');
 
-console.log('SMOKE OK — alle 14 Prüfungen bestanden');
+
+
+/* ===================== Diagnose: die vier Klassiker ===================== */
+
+import { describeFailure, formatFailure } from '../src/services/diagnostics.js';
+import { ProviderError } from '../src/services/providers/http.js';
+
+const anthropicError = (status, type, message) =>
+  new ProviderError('roh', { status, vendor: 'Anthropic', body: { type: 'error', error: { type, message } } });
+const geminiError = (status, statusText, message) =>
+  new ProviderError('roh', { status, vendor: 'Gemini', body: { error: { code: status, status: statusText, message } } });
+
+// 15) Falscher Key - beide Anbieter melden das unterschiedlich
+assert.match(describeFailure(anthropicError(401, 'authentication_error', 'invalid x-api-key')).headline, /lehnt den API-Key ab/);
+assert.match(describeFailure(geminiError(400, 'INVALID_ARGUMENT', 'API key not valid. Please pass a valid API key.')).headline, /lehnt den API-Key ab/);
+assert.match(describeFailure(anthropicError(401, 'authentication_error', '')).remedy, /sk-ant-/);
+
+// 16) Vom Browser blockiert bzw. offline
+const netError = new ProviderError('Netzwerkfehler', { vendor: 'Anthropic', network: true });
+assert.match(describeFailure(netError).headline, /kam nicht durch/);
+assert.match(describeFailure(netError).remedy, /CORS/);
+
+// 17) Modellname unbekannt
+assert.match(describeFailure(anthropicError(404, 'not_found_error', 'model: quatsch-1')).headline, /kennt dieses Modell nicht/);
+assert.match(describeFailure(geminiError(404, 'NOT_FOUND', 'models/quatsch is not found')).remedy, /providers\.js/);
+
+// 18) Kontingent vs. Rate-Limit - zwei verschiedene Ratschläge
+assert.match(
+  describeFailure(anthropicError(400, 'invalid_request_error', 'Your credit balance is too low')).headline,
+  /Guthaben erschöpft/
+);
+assert.match(describeFailure(anthropicError(429, 'rate_limit_error', 'too many requests')).headline, /zu viele Anfragen/);
+assert.match(describeFailure(geminiError(429, 'RESOURCE_EXHAUSTED', 'Quota exceeded')).headline, /erschöpft|zu viele/);
+
+// 19) Berechtigung und Störung
+assert.match(describeFailure(anthropicError(403, 'permission_error', '')).headline, /keine Berechtigung/);
+assert.match(describeFailure(anthropicError(529, 'overloaded_error', '')).headline, /Störung/);
+
+// 20) Formatierung für die Fehlerleiste: Kopfzeile, Rat, Rohtext
+const formatted = formatFailure(anthropicError(401, 'authentication_error', 'invalid x-api-key'));
+assert.match(formatted, /^Anthropic lehnt den API-Key ab\n→ /);
+
+console.log('SMOKE OK — alle 20 Prüfungen bestanden');

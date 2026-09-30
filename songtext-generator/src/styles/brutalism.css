@@ -866,3 +866,33 @@ select.field__control {
   color: var(--alarm);
   font-weight: 700;
 }
+
+/* ------------------------------------------------------------ Diagnose --- */
+
+.diagnosis {
+  display: grid;
+  gap: 4px;
+  border: var(--border-thin);
+  border-left: 4px solid var(--alarm);
+  background: #1a0000;
+  padding: 8px 10px;
+  margin-top: 8px;
+}
+
+.diagnosis__headline {
+  font-size: 12px;
+  color: var(--alarm);
+  letter-spacing: 0.04em;
+}
+
+.diagnosis__remedy {
+  font-size: 11px;
+  color: var(--grey);
+  line-height: 1.5;
+}
+
+.provider-row {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}

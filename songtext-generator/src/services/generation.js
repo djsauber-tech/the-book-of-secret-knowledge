@@ -45,7 +45,11 @@ export function parseLinePatch(text, expectedLineNumbers) {
 export async function generateBlock({ state, block, mode, keys, signal, onDelta, onRetry }) {
   const request = buildRequest(state, block, mode);
   const raw = await callProvider(request, keys, { signal, onDelta, onRetry });
-  if (!raw) throw new Error('Leere Antwort vom Modell');
+  if (!raw) {
+    throw new Error(
+      'Leere Antwort vom Modell - meist ein Safety-Filter oder ein zu knappes Token-Budget.'
+    );
+  }
 
   if (request.mode === 'lines') {
     const patch = parseLinePatch(raw, request.expectedLineNumbers);

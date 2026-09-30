@@ -22,7 +22,7 @@ function body(request, stream) {
  *
  * Mit `onDelta` wird gestreamt, sonst in einem Rutsch geladen.
  */
-export async function callAnthropic(request, apiKey, { signal, onDelta, onRetry } = {}) {
+export async function callAnthropic(request, apiKey, { signal, onDelta, onRetry, attempts } = {}) {
   const stream = typeof onDelta === 'function';
   const headers = {
     'content-type': 'application/json',
@@ -34,7 +34,7 @@ export async function callAnthropic(request, apiKey, { signal, onDelta, onRetry 
   const response = await fetchWithRetry(
     ENDPOINT,
     { method: 'POST', headers, body: body(request, stream) },
-    { signal, vendor: VENDOR, onRetry }
+    { signal, vendor: VENDOR, onRetry, attempts }
   );
 
   if (!stream) {
