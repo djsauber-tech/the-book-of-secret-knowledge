@@ -1,4 +1,5 @@
 import { activeStoryPath, activeStrategies, describeBlock, lineState, lockedContextBlocks } from '../state/selectors.js';
+import { meterInstruction } from './syllables.js';
 
 const BASE_SYSTEM = [
   'Du bist ein deutschsprachiger Songtexter mit einem kompromisslosen Anti-Klischee-Filter.',
@@ -118,6 +119,8 @@ export function buildRequest(state, block, mode = 'full') {
         '',
         renderLineGrid(block),
         '',
+        meterInstruction(block) ?? '',
+        '',
         `AUSGABEFORMAT: eine Zeile pro freier Zeilennummer, exakt "<nr>: <text>".`,
         `Gib genau diese Nummern zurück: ${free.map((l) => l.number).join(', ')}.`,
         'Keine gelockten Nummern, keine Leerzeilen, kein weiterer Text.'
@@ -136,7 +139,8 @@ export function buildRequest(state, block, mode = 'full') {
         [
           'ACHTUNG: folgende Zeilen dieses Blocks sind gelockt und bleiben clientseitig erhalten.',
           'Schreibe passend dazu, wiederhole sie aber nicht:',
-          locked.map((l) => `${l.number}: ${l.text}`).join('\n')
+          locked.map((l) => `${l.number}: ${l.text}`).join('\n'),
+          meterInstruction(block) ?? ''
         ].join('\n')
       );
     }
@@ -165,4 +169,67 @@ export function renderRequestForPreview(request) {
     '=== USER ===',
     request.user
   ].join('\n');
+}
+
+const CRITIQUE_SYSTEM = [
+  'Du bist ein strenger Songtext-Lektor für deutsche Texte.',
+  'Du schreibst den Text nicht neu, sondern prüfst ihn Zeile für Zeile gegen die',
+  'vorgegebenen Herangehensweisen und benennst nur echte, belegbare Verstöße.',
+  'Du bist knapp und konkret. Lob, Zusammenfassungen und Höflichkeitsfloskeln lässt du weg.',
+  'Wenn eine Zeile in Ordnung ist, erwähnst du sie nicht.'
+].join(' ');
+
+/**
+ * Kreuz-Kritik: ein anderes Modell prüft den fertigen Block gegen genau die
+ * Strategien, unter denen er geschrieben wurde. Antwort ist JSON, damit die
+ * Befunde einzeln annehmbar sind statt als Fließtext zu enden.
+ */
+export function buildCritiqueRequest(state, block, reviewer) {
+  const { label, ordinal, typeDef } = describeBlock(block, state.blocks);
+  const role = typeDef.role;
+
+  const numbered = block.lines
+    .map((line, i) => `${i + 1}: ${line.text}`)
+    .join('\n');
+
+  const sections = [
+    `AUFGABE: Prüfe den Block "${label}" (Typ: ${typeDef.label}) eines deutschen Songs.`,
+    `GRUNDIDEE / THEMA:\n${state.global.idea.trim() || '(nicht angegeben)'}`,
+    renderVocabulary(state),
+    renderStoryPathSection(state, block, role, ordinal),
+    renderStrategySection(block, role),
+    renderLockedContext(state, block),
+    `ZU PRÜFENDER TEXT:\n${numbered}`,
+    [
+      'PRÜFE GENAU DIESE PUNKTE:',
+      '- Klischee, Plattitüde oder generische Aussage (jede gefundene Stelle ist ein Befund)',
+      '- Herangehensweise verletzt (nenne welche)',
+      '- Vokabular-Pool nicht oder unnatürlich eingebaut',
+      '- erste bzw. letzte Zeile ohne Setup- bzw. Punchline-Wirkung',
+      '- Behauptung statt Beweis in einer Strophe, Beweis statt Urteil in einem Refrain',
+      '- Vergleich ohne How und Why (S-H-Y unvollständig)'
+    ].join('\n'),
+    [
+      'AUSGABEFORMAT: ausschließlich ein JSON-Array, kein Fließtext, keine Codefence.',
+      'Jeder Befund ist ein Objekt mit genau diesen Feldern:',
+      '{"line": <Zeilennummer oder null für den ganzen Block>,',
+      ' "severity": "hart" | "weich",',
+      ' "strategy": <Kurzname der verletzten Herangehensweise oder null>,',
+      ' "problem": <ein Satz, was konkret falsch ist>,',
+      ' "suggestion": <die konkret verbesserte Songzeile, oder null wenn nicht zeilenbezogen>}',
+      '"hart" = echter Verstoß, "weich" = Geschmacksfrage.',
+      'Gib höchstens 8 Befunde zurück, die schwersten zuerst. Findest du nichts, gib [] zurück.'
+    ].join('\n')
+  ];
+
+  return {
+    mode: 'critique',
+    blockId: block.id,
+    provider: reviewer.provider,
+    model: reviewer.model,
+    temperature: 0.3,
+    system: CRITIQUE_SYSTEM,
+    user: sections.filter(Boolean).join('\n\n'),
+    expectedLineNumbers: null
+  };
 }

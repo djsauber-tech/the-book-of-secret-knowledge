@@ -1,9 +1,12 @@
 import { callAnthropic } from './anthropic.js';
 import { callGemini } from './gemini.js';
 
+export { AbortedError, ProviderError } from './http.js';
+
 /**
  * Provider-Registry. Ein neuer Anbieter braucht genau einen Eintrag hier plus
  * ein Adapter-Modul mit der Signatur (request, apiKey, options) => Promise<string>.
+ * Optionen: { signal, onDelta, onRetry } - onDelta schaltet auf Streaming.
  */
 const ADAPTERS = {
   claude: { call: callAnthropic, keyField: 'anthropic' },

@@ -666,3 +666,203 @@ select.field__control {
     display: none;
   }
 }
+
+/* ------------------------------------------------------- Varianten-Duell -- */
+
+.duel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.duel__column {
+  border: var(--border);
+  background: var(--asphalt-sunken);
+}
+
+.duel__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: var(--border);
+  background: var(--concrete);
+}
+
+.duel__provider {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--neon);
+}
+
+.duel__model {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--grey);
+}
+
+.duel__lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.duel__line {
+  display: grid;
+  grid-template-columns: 26px 1fr 26px 30px;
+  align-items: center;
+  border-bottom: var(--border-thin);
+}
+
+.duel__line:last-child {
+  border-bottom: none;
+}
+
+.duel__number {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--grey-dark);
+  text-align: center;
+}
+
+.duel__text {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 7px 4px;
+  word-break: break-word;
+}
+
+.duel__syllables {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--grey-dark);
+  text-align: center;
+}
+
+.duel__adopt {
+  border-left: var(--border-thin);
+  align-self: stretch;
+  cursor: pointer;
+  color: var(--neon);
+  font-size: 14px;
+}
+
+.duel__adopt:hover:not(:disabled) {
+  background: var(--neon);
+  color: var(--asphalt);
+}
+
+.duel__adopt:disabled {
+  color: var(--grey-dark);
+  cursor: not-allowed;
+}
+
+/* ----------------------------------------------------------- Kritik ------- */
+
+.findings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.finding {
+  border: var(--border-thin);
+  border-left: 4px solid var(--warn);
+  background: var(--asphalt-sunken);
+  padding: 8px 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.finding--hart {
+  border-left-color: var(--alarm);
+}
+
+.finding__head {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.finding__problem {
+  margin: 0;
+  font-size: 12px;
+}
+
+.finding__suggestion {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--neon);
+  border-left: var(--border-thin);
+  border-color: var(--neon);
+  padding-left: 8px;
+}
+
+/* ---------------------------------------------------------- Verlauf ------- */
+
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.history__item {
+  border: var(--border-thin);
+  background: var(--asphalt-sunken);
+}
+
+.history__meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  border-bottom: var(--border-thin);
+}
+
+.history__text {
+  margin: 0;
+  padding: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: pre-wrap;
+  color: var(--grey);
+}
+
+/* ------------------------------------------------- Stream & Silbenmaß ----- */
+
+.stream {
+  margin: 0;
+  border: var(--border-thin);
+  border-color: var(--warn);
+  background: var(--asphalt-sunken);
+  padding: 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  color: var(--warn);
+  max-height: 220px;
+  overflow: auto;
+}
+
+.line__syllables {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--grey-dark);
+  align-self: center;
+  padding: 0 7px;
+  border-right: var(--border-thin);
+  min-width: 26px;
+  text-align: center;
+}
+
+.line__syllables--off {
+  color: var(--alarm);
+  font-weight: 700;
+}

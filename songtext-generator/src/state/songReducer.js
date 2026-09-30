@@ -30,6 +30,12 @@ export function createBlock(partial = {}) {
     status: 'idle', // idle | running | error
     error: null,
     lastRunAt: null,
+    // Laufzeit-Beiwerk: Varianten-Duell, Kreuz-Kritik, Änderungsverlauf
+    variants: [],
+    critique: null,
+    history: [],
+    stream: null,
+    notice: null,
     ...partial
   };
 }
@@ -86,6 +92,45 @@ function mapLine(state, blockId, lineId, fn) {
     ...b,
     lines: b.lines.map((l) => (l.id === lineId ? fn(l) : l))
   }));
+}
+
+/**
+ * Übernimmt neue Zeilentexte, ohne gelockte Zeilen anzutasten: gelockte Zeilen
+ * bleiben an ihrer Position, der Nachschub füllt nur die freien Plätze auf.
+ * Gemeinsame Basis von Vollersatz und Variantenübernahme.
+ */
+function mergeRespectingLocks(existingLines, incomingTexts) {
+  const incoming = [...incomingTexts];
+  const merged = [];
+  const count = Math.max(existingLines.length, incomingTexts.length);
+  for (let i = 0; i < count; i += 1) {
+    const existing = existingLines[i];
+    if (existing?.locked) {
+      merged.push(existing);
+      continue;
+    }
+    const text = incoming.shift();
+    if (text === undefined) continue;
+    merged.push(existing ? { ...existing, text } : createLine(text));
+  }
+  return merged;
+}
+
+const HISTORY_LIMIT = 20;
+
+/**
+ * Jede Änderung, die von einem Modell kommt, legt vorher einen Schnappschuss
+ * ab. Restore ist damit ein gewöhnlicher Zustandswechsel und braucht keine
+ * eigene Undo-Mechanik.
+ */
+function pushHistory(block, entry) {
+  const snapshot = {
+    id: nextId('hist'),
+    at: Date.now(),
+    lines: block.lines.map((l) => ({ ...l })),
+    ...entry
+  };
+  return [snapshot, ...block.history].slice(0, HISTORY_LIMIT);
 }
 
 export function songReducer(state, action) {
@@ -151,6 +196,11 @@ export function songReducer(state, action) {
         locked: false,
         status: 'idle',
         error: null,
+        variants: [],
+        critique: null,
+        history: [],
+        stream: null,
+        notice: null,
         lines: source.lines.map((l) => ({ ...l, id: nextId('line') }))
       };
       const blocks = [...state.blocks];
@@ -235,13 +285,37 @@ export function songReducer(state, action) {
     /* ---------------- Generierung ---------------- */
 
     case 'GENERATION_START':
-      return mapBlock(state, action.blockId, (b) => ({ ...b, status: 'running', error: null }));
+      return mapBlock(state, action.blockId, (b) => ({
+        ...b,
+        status: 'running',
+        error: null,
+        notice: null,
+        stream: null
+      }));
+
+    case 'GENERATION_DELTA':
+      return mapBlock(state, action.blockId, (b) => ({ ...b, stream: action.text }));
+
+    /** Hinweis aus der Transportschicht, z.B. "Rate-Limit, neuer Versuch in 2s". */
+    case 'GENERATION_NOTICE':
+      return mapBlock(state, action.blockId, (b) => ({ ...b, notice: action.notice }));
 
     case 'GENERATION_FAILED':
       return mapBlock(state, action.blockId, (b) => ({
         ...b,
         status: 'error',
-        error: action.error
+        error: action.error,
+        stream: null,
+        notice: null
+      }));
+
+    case 'GENERATION_ABORTED':
+      return mapBlock(state, action.blockId, (b) => ({
+        ...b,
+        status: 'idle',
+        error: null,
+        stream: null,
+        notice: null
       }));
 
     /**
@@ -250,20 +324,16 @@ export function songReducer(state, action) {
      */
     case 'GENERATION_REPLACED':
       return mapBlock(state, action.blockId, (b) => {
-        const incoming = [...action.lines];
-        const merged = [];
-        const count = Math.max(b.lines.length, incoming.length);
-        for (let i = 0; i < count; i += 1) {
-          const existing = b.lines[i];
-          if (existing?.locked) {
-            merged.push(existing);
-            continue;
-          }
-          const text = incoming.shift();
-          if (text === undefined) continue;
-          merged.push(existing ? { ...existing, text } : createLine(text));
-        }
-        return { ...b, lines: merged, status: 'idle', error: null, lastRunAt: Date.now() };
+        return {
+          ...b,
+          lines: mergeRespectingLocks(b.lines, action.lines),
+          status: 'idle',
+          error: null,
+          stream: null,
+          notice: null,
+          lastRunAt: Date.now(),
+          history: pushHistory(b, { kind: 'Vollersatz', provider: b.provider, model: b.model })
+        };
       });
 
     /**
@@ -280,8 +350,157 @@ export function songReducer(state, action) {
         }),
         status: 'idle',
         error: null,
-        lastRunAt: Date.now()
+        stream: null,
+        notice: null,
+        lastRunAt: Date.now(),
+        history: pushHistory(b, {
+          kind: `Zeilen ${Object.keys(action.patch).join(', ')}`,
+          provider: b.provider,
+          model: b.model
+        })
       }));
+
+    /* ---------------- Historie ---------------- */
+
+    case 'RESTORE_HISTORY':
+      return mapBlock(state, action.blockId, (b) => {
+        const entry = b.history.find((h) => h.id === action.entryId);
+        if (!entry) return b;
+        return {
+          ...b,
+          lines: entry.lines.map((l) => ({ ...l })),
+          history: pushHistory(b, { kind: 'vor Wiederherstellung', provider: b.provider, model: b.model })
+        };
+      });
+
+    case 'CLEAR_HISTORY':
+      return mapBlock(state, action.blockId, (b) => ({ ...b, history: [] }));
+
+    /* ---------------- Varianten-Duell ---------------- */
+
+    case 'VARIANTS_RECEIVED':
+      return mapBlock(state, action.blockId, (b) => ({
+        ...b,
+        status: 'idle',
+        error: null,
+        stream: null,
+        notice: action.failures?.length ? action.failures.join(' | ') : null,
+        variants: action.variants.map((v, i) => ({ id: `${Date.now()}_${i}`, ...v }))
+      }));
+
+    case 'CLEAR_VARIANTS':
+      return mapBlock(state, action.blockId, (b) => ({ ...b, variants: [] }));
+
+    /** Ganze Variante übernehmen - gelockte Zeilen bleiben auch hier stehen. */
+    case 'ADOPT_VARIANT':
+      return mapBlock(state, action.blockId, (b) => {
+        const variant = b.variants.find((v) => v.id === action.variantId);
+        if (!variant) return b;
+        return {
+          ...b,
+          lines: mergeRespectingLocks(b.lines, variant.lines),
+          provider: variant.provider,
+          model: variant.model,
+          history: pushHistory(b, {
+            kind: 'vor Variantenübernahme',
+            provider: b.provider,
+            model: b.model
+          })
+        };
+      });
+
+    /**
+     * Einzelne Zeile aus einer Variante ziehen. Zeile 3 der Variante wird auch
+     * dann Zeile 3 des Blocks, wenn der Block noch kürzer ist - dazwischen
+     * entstehen leere Zeilen, statt die Position stillschweigend zu verschieben.
+     */
+    case 'ADOPT_VARIANT_LINE':
+      return mapBlock(state, action.blockId, (b) => {
+        const variant = b.variants.find((v) => v.id === action.variantId);
+        const text = variant?.lines[action.lineIndex];
+        if (text === undefined) return b;
+        const target = b.lines[action.lineIndex];
+        if (target?.locked) return b;
+
+        const lines = [...b.lines];
+        while (lines.length < action.lineIndex) lines.push(createLine(''));
+        if (target) lines[action.lineIndex] = { ...target, text };
+        else lines.push(createLine(text));
+        return { ...b, lines };
+      });
+
+    /* ---------------- Kreuz-Kritik ---------------- */
+
+    case 'CRITIQUE_START':
+      return mapBlock(state, action.blockId, (b) => ({
+        ...b,
+        critique: { status: 'running', findings: [], reviewer: action.reviewer, error: null }
+      }));
+
+    case 'CRITIQUE_RECEIVED':
+      return mapBlock(state, action.blockId, (b) => ({
+        ...b,
+        critique: {
+          status: 'done',
+          findings: action.findings,
+          reviewer: action.reviewer,
+          error: null,
+          at: Date.now()
+        }
+      }));
+
+    case 'CRITIQUE_FAILED':
+      return mapBlock(state, action.blockId, (b) => ({
+        ...b,
+        critique: { status: 'error', findings: [], reviewer: action.reviewer, error: action.error }
+      }));
+
+    case 'CLEAR_CRITIQUE':
+      return mapBlock(state, action.blockId, (b) => ({ ...b, critique: null }));
+
+    /** Vorschlag eines Befunds in die betroffene Zeile übernehmen. */
+    case 'APPLY_FINDING':
+      return mapBlock(state, action.blockId, (b) => {
+        const finding = b.critique?.findings.find((f) => f.id === action.findingId);
+        if (!finding?.suggestion || !finding.line) return b;
+        const index = finding.line - 1;
+        const target = b.lines[index];
+        if (!target || target.locked) return b;
+        const lines = [...b.lines];
+        lines[index] = { ...target, text: finding.suggestion };
+        return {
+          ...b,
+          lines,
+          critique: {
+            ...b.critique,
+            findings: b.critique.findings.map((f) =>
+              f.id === action.findingId ? { ...f, applied: true } : f
+            )
+          },
+          history: pushHistory(b, { kind: 'vor Kritik-Übernahme', provider: b.provider, model: b.model })
+        };
+      });
+
+    case 'DISMISS_FINDING':
+      return mapBlock(state, action.blockId, (b) => ({
+        ...b,
+        critique: b.critique
+          ? {
+              ...b.critique,
+              findings: b.critique.findings.filter((f) => f.id !== action.findingId)
+            }
+          : null
+      }));
+
+    /* ---------------- Import ---------------- */
+
+    case 'IMPORT_PROJECT':
+      return {
+        ...createInitialState(),
+        title: action.project.title,
+        global: action.project.global,
+        blocks: action.project.blocks
+      };
 
     default:
       return state;

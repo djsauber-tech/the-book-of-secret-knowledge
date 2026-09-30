@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from './ui/Controls.jsx';
 import { useDispatch } from '../state/SongContext.jsx';
 import { lineState } from '../state/selectors.js';
+import { meterProfile } from '../services/syllables.js';
 
 /**
  * Zeilenbasierter Micro-Editor (Anforderung 5). Jede Zeile ist einzeln
@@ -12,6 +13,7 @@ export default function LineEditor({ block, onGenerateLines, busy }) {
   const dispatch = useDispatch();
   const { locked, free, total } = lineState(block);
   const canPatch = locked.length > 0 && free.length > 0;
+  const { counts, target, min, max } = meterProfile(block);
 
   return (
     <div className="block__section">
@@ -23,6 +25,11 @@ export default function LineEditor({ block, onGenerateLines, busy }) {
         <span className="tag">{total} Zeilen</span>
         <span className={`tag ${locked.length ? 'tag--on' : ''}`}>{locked.length} gelockt</span>
         <span className="tag">{free.length} frei</span>
+        {target !== null ? (
+          <span className="tag tag--on" title="Aus den gelockten Zeilen abgeleitet, geht so in den Prompt">
+            Maß: {min === max ? target : `${min}\u2013${max}`} Silben
+          </span>
+        ) : null}
       </div>
 
       {total === 0 ? (
@@ -35,6 +42,10 @@ export default function LineEditor({ block, onGenerateLines, busy }) {
             const number = i + 1;
             const power =
               number === 1 ? 'SETUP' : number === total && total > 1 ? 'PUNCHLINE' : '';
+            const syllables = counts[i];
+            // Mehr als eine Silbe daneben bricht den Gesang - das wird markiert.
+            const offMeter =
+              target !== null && line.text.trim() !== '' && Math.abs(syllables - target) > 1;
             return (
               <div key={line.id} className={`line ${line.locked ? 'line--locked' : ''}`}>
                 <span className="line__number">{number}</span>
@@ -61,6 +72,16 @@ export default function LineEditor({ block, onGenerateLines, busy }) {
                   }
                 />
                 <span className="line__tail">
+                  <span
+                    className={`line__syllables ${offMeter ? 'line__syllables--off' : ''}`}
+                    title={
+                      target === null
+                        ? `${syllables} Silben (geschätzt)`
+                        : `${syllables} Silben, Ziel ${target} (geschätzt)`
+                    }
+                  >
+                    {syllables}
+                  </span>
                   {power ? <span className="line__power">{power}</span> : null}
                   <button
                     type="button"

@@ -1,23 +1,28 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button, Checkbox, Field, Select, TextArea } from './ui/Controls.jsx';
 import StrategySelector from './StrategySelector.jsx';
 import LineEditor from './LineEditor.jsx';
+import VariantDuel from './VariantDuel.jsx';
+import CritiquePanel from './CritiquePanel.jsx';
+import HistoryPanel from './HistoryPanel.jsx';
 import { useDispatch, useKeys, useSong } from '../state/SongContext.jsx';
 import { BLOCK_TYPES } from '../domain/blockTypes.js';
 import { PROVIDERS, PROVIDER_BY_ID } from '../domain/providers.js';
 import { blockReadiness, blockText, describeBlock, lockedContextBlocks } from '../state/selectors.js';
 import { buildRequest, renderRequestForPreview } from '../services/promptBuilder.js';
 
-export default function SongBlock({ block, onGenerate, busy }) {
+export default function SongBlock({ block, onGenerate, onDuel, onCritique, onAbort, busy }) {
   const state = useSong();
   const dispatch = useDispatch();
   const { keys } = useKeys();
+  const [showHistory, setShowHistory] = useState(false);
 
   const { index, label } = describeBlock(block, state.blocks);
   const readiness = blockReadiness(state, block, keys);
   const context = lockedContextBlocks(state, block.id);
   const inspecting = state.ui.inspectBlockId === block.id;
   const provider = PROVIDER_BY_ID[block.provider];
+  const hasLines = block.lines.some((l) => l.text.trim() !== '');
 
   const statusClass =
     block.status === 'running'
@@ -127,6 +132,31 @@ export default function SongBlock({ block, onGenerate, busy }) {
           >
             {busy ? 'Läuft …' : `Block generieren (${provider.label})`}
           </Button>
+          {busy ? (
+            <Button variant="danger" onClick={onAbort}>
+              Abbrechen
+            </Button>
+          ) : null}
+        </div>
+
+        <div className="btn-row" style={{ marginTop: 8 }}>
+          <Button
+            disabled={!readiness.ok || busy}
+            title="Beide Modelle schreiben denselben Block, Ergebnisse stehen nebeneinander"
+            onClick={onDuel}
+          >
+            ⚔ Varianten-Duell
+          </Button>
+          <Button
+            disabled={busy || !hasLines}
+            title="Das jeweils andere Modell prüft den Text gegen die aktiven Strategien"
+            onClick={onCritique}
+          >
+            ⚑ Kreuz-Kritik
+          </Button>
+          <Button variant="ghost" disabled={block.history.length === 0} onClick={() => setShowHistory((v) => !v)}>
+            Verlauf ({block.history.length})
+          </Button>
         </div>
         {!readiness.ok ? (
           <p className="field__hint" style={{ marginTop: 6, color: 'var(--warn)' }}>
@@ -134,6 +164,15 @@ export default function SongBlock({ block, onGenerate, busy }) {
           </p>
         ) : null}
       </div>
+
+      {block.notice ? <div className="block__section notice">{block.notice}</div> : null}
+
+      {block.stream ? (
+        <div className="block__section">
+          <h4 className="block__section-title">Live-Ausgabe</h4>
+          <pre className="stream">{block.stream}</pre>
+        </div>
+      ) : null}
 
       {inspecting ? (
         <div className="preview">
@@ -155,6 +194,10 @@ export default function SongBlock({ block, onGenerate, busy }) {
       </div>
 
       <LineEditor block={block} busy={busy} onGenerateLines={() => onGenerate('lines')} />
+
+      <VariantDuel block={block} />
+      <CritiquePanel block={block} />
+      {showHistory ? <HistoryPanel block={block} onClose={() => setShowHistory(false)} /> : null}
 
       {block.error ? <div className="error-bar">{block.error}</div> : null}
     </article>
