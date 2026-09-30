@@ -1,0 +1,668 @@
+/* ==========================================================================
+   DIGITALER BRUTALISMUS
+   Regeln: keine abgerundeten Ecken, keine weichen Schatten, harte Kanten,
+   Asphaltschwarz + Neongrün/Weiss, Monospace für Prompt- und Textfelder.
+   ========================================================================== */
+
+:root {
+  --asphalt: #0a0a0a;
+  --asphalt-raised: #141414;
+  --asphalt-sunken: #050505;
+  --concrete: #1e1e1e;
+  --line: #2e2e2e;
+  --neon: #00ff5f;
+  --neon-dim: #0a3d1c;
+  --white: #ffffff;
+  --grey: #8a8a8a;
+  --grey-dark: #545454;
+  --alarm: #ff2d2d;
+  --warn: #ffd400;
+
+  --border: 2px solid var(--white);
+  --border-thin: 1px solid var(--line);
+  --sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  border-radius: 0 !important;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--asphalt);
+  color: var(--white);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  outline-offset: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--neon);
+  outline-offset: 1px;
+}
+
+/* ---------------------------------------------------------------- Layout -- */
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app__main {
+  flex: 1;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 16px 96px;
+}
+
+.masthead {
+  border-bottom: var(--border);
+  background: var(--asphalt);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.masthead__inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.masthead__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.masthead__title span {
+  color: var(--neon);
+}
+
+.masthead__spacer {
+  flex: 1;
+}
+
+.masthead__title-input {
+  border-bottom: var(--border-thin);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 4px 0;
+  min-width: 220px;
+  color: var(--neon);
+}
+
+/* ----------------------------------------------------------------- Panel -- */
+
+.panel {
+  border: var(--border);
+  background: var(--asphalt-raised);
+  margin-top: 20px;
+}
+
+.panel__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--white);
+  color: var(--asphalt);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.panel__head--neon {
+  background: var(--neon);
+}
+
+.panel__head-spacer {
+  flex: 1;
+}
+
+.panel__body {
+  padding: 16px;
+  display: grid;
+  gap: 16px;
+}
+
+.panel--settings .panel__body {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+/* ----------------------------------------------------------------- Field -- */
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--neon);
+}
+
+.field__hint {
+  font-size: 11px;
+  color: var(--grey);
+  letter-spacing: 0.02em;
+}
+
+.field__control {
+  border: var(--border);
+  background: var(--asphalt-sunken);
+  padding: 8px 10px;
+  width: 100%;
+  font-family: var(--mono);
+  resize: vertical;
+}
+
+.field__control:focus {
+  border-color: var(--neon);
+  outline: none;
+}
+
+.field__control::placeholder {
+  color: var(--grey-dark);
+}
+
+select.field__control {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--neon) 50%),
+    linear-gradient(135deg, var(--neon) 50%, transparent 50%);
+  background-position: calc(100% - 16px) center, calc(100% - 11px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 32px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ---------------------------------------------------------------- Button -- */
+
+.btn {
+  border: var(--border);
+  background: var(--asphalt);
+  color: var(--white);
+  padding: 7px 12px;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--white);
+  color: var(--asphalt);
+}
+
+.btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+}
+
+.btn:disabled {
+  color: var(--grey-dark);
+  border-color: var(--grey-dark);
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--neon);
+  border-color: var(--neon);
+  color: var(--asphalt);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--asphalt);
+  color: var(--neon);
+}
+
+.btn--danger {
+  border-color: var(--alarm);
+  color: var(--alarm);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: var(--alarm);
+  color: var(--asphalt);
+}
+
+.btn--ghost {
+  border-color: var(--line);
+  color: var(--grey);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: var(--concrete);
+  color: var(--white);
+  border-color: var(--white);
+}
+
+.btn--icon {
+  padding: 5px 8px;
+  min-width: 30px;
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* -------------------------------------------------------------- Checkbox -- */
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.check__box {
+  width: 16px;
+  height: 16px;
+  border: var(--border);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.check--on .check__box {
+  background: var(--neon);
+  border-color: var(--neon);
+  color: var(--asphalt);
+}
+
+.check--on {
+  color: var(--neon);
+}
+
+.check input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* ----------------------------------------------------------------- Block -- */
+
+.block {
+  border: var(--border);
+  background: var(--asphalt-raised);
+  margin-top: 16px;
+}
+
+.block--locked {
+  border-color: var(--neon);
+}
+
+.block--running {
+  border-color: var(--warn);
+}
+
+.block--error {
+  border-color: var(--alarm);
+}
+
+.block__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-bottom: var(--border);
+  background: var(--concrete);
+}
+
+.block__index {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--asphalt);
+  background: var(--white);
+  padding: 2px 7px;
+  font-weight: 700;
+}
+
+.block--locked .block__index {
+  background: var(--neon);
+}
+
+.block__label {
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+
+.block__spacer {
+  flex: 1;
+}
+
+.block__config {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border-bottom: var(--border-thin);
+}
+
+.block__section {
+  padding: 12px;
+  border-bottom: var(--border-thin);
+}
+
+.block__section:last-child {
+  border-bottom: none;
+}
+
+.block__section-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--grey);
+  margin: 0 0 8px;
+}
+
+.tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border: var(--border-thin);
+  color: var(--grey);
+}
+
+.tag--on {
+  border-color: var(--neon);
+  color: var(--neon);
+}
+
+.tag--alarm {
+  border-color: var(--alarm);
+  color: var(--alarm);
+}
+
+.tag--warn {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+/* ------------------------------------------------------------ Strategien -- */
+
+.strategy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+}
+
+.strategy {
+  border: var(--border-thin);
+  background: var(--asphalt-sunken);
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.strategy:hover {
+  border-color: var(--white);
+}
+
+.strategy--on {
+  border-color: var(--neon);
+  background: var(--neon-dim);
+}
+
+.strategy__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.strategy__short {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--neon);
+}
+
+.strategy__name {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.strategy__summary {
+  font-size: 11px;
+  color: var(--grey);
+}
+
+/* ---------------------------------------------------- Zeilen-Micro-Editor -- */
+
+.lines {
+  display: grid;
+  gap: 4px;
+}
+
+.line {
+  display: grid;
+  grid-template-columns: 34px 24px 1fr auto;
+  align-items: stretch;
+  gap: 0;
+  border: var(--border-thin);
+  background: var(--asphalt-sunken);
+}
+
+.line--locked {
+  border-color: var(--neon);
+}
+
+.line__number {
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--grey);
+  background: var(--concrete);
+  border-right: var(--border-thin);
+}
+
+.line--locked .line__number {
+  background: var(--neon);
+  color: var(--asphalt);
+  font-weight: 700;
+}
+
+.line__lock {
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  border-right: var(--border-thin);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--grey-dark);
+  background: transparent;
+}
+
+.line__lock:hover {
+  color: var(--white);
+}
+
+.line--locked .line__lock {
+  color: var(--neon);
+}
+
+.line__input {
+  padding: 7px 10px;
+  font-family: var(--mono);
+  width: 100%;
+  min-width: 0;
+}
+
+.line--locked .line__input {
+  color: var(--neon);
+}
+
+.line__tail {
+  display: flex;
+  align-items: stretch;
+  border-left: var(--border-thin);
+}
+
+.line__remove {
+  padding: 0 9px;
+  color: var(--grey-dark);
+  cursor: pointer;
+  font-family: var(--mono);
+}
+
+.line__remove:hover {
+  color: var(--alarm);
+}
+
+.line__power {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--grey-dark);
+  align-self: center;
+  padding: 0 8px;
+  border-right: var(--border-thin);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------- Add-Bar --- */
+
+.addbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  border: 2px dashed var(--line);
+  padding: 12px;
+  margin-top: 16px;
+}
+
+.addbar__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--grey);
+  margin-right: 4px;
+}
+
+/* ----------------------------------------------------------- Preview/Log -- */
+
+.preview {
+  border: var(--border);
+  border-color: var(--neon);
+  background: var(--asphalt-sunken);
+  margin: 12px;
+}
+
+.preview__body {
+  margin: 0;
+  padding: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 380px;
+  overflow: auto;
+  color: var(--neon);
+}
+
+.error-bar {
+  padding: 8px 12px;
+  border-top: var(--border-thin);
+  border-color: var(--alarm);
+  background: #2a0000;
+  color: var(--alarm);
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: pre-wrap;
+}
+
+.notice {
+  border: var(--border-thin);
+  border-color: var(--warn);
+  color: var(--warn);
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+/* --------------------------------------------------------------- Footer --- */
+
+.footer {
+  border-top: var(--border);
+  padding: 12px 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--grey-dark);
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- Mobile -- */
+
+@media (max-width: 640px) {
+  .app__main {
+    padding: 0 12px 64px;
+  }
+  .block__config {
+    grid-template-columns: 1fr;
+  }
+  .line {
+    grid-template-columns: 28px 22px 1fr auto;
+  }
+  .line__power {
+    display: none;
+  }
+}
