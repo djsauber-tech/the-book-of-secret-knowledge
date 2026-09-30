@@ -1,16 +1,33 @@
 import { ProviderError, fetchWithRetry, readSSE } from './http.js';
+import { modelTraits } from '../../domain/providers.js';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const API_VERSION = '2023-06-01';
 const VENDOR = 'Anthropic';
 
-function body(request, stream) {
+/**
+ * Die aktuellen Claude-Modelle (Opus 5.5/5, Sonnet 5.5) haben zwei Eigenheiten,
+ * die hier zwingend berücksichtigt werden müssen:
+ *
+ * 1. Sie weisen `temperature` mit HTTP 400 ab - Sampling-Parameter gibt es
+ *    dort nicht mehr. Gesteuert wird über `output_config.effort`.
+ * 2. Sie denken standardmäßig mit ("adaptive thinking"). Diese Thinking-Tokens
+ *    gehen von `max_tokens` ab. Mit einem knappen Budget verbraucht das Modell
+ *    alles im Nachdenken und liefert am Ende keine einzige Songzeile - deshalb
+ *    liegt das Budget großzügig, und der Effort bleiben niedrig: Songzeilen
+ *    schreiben ist keine Denksportaufgabe.
+ */
+export function body(request, stream) {
+  const traits = modelTraits('claude', request.model);
   return JSON.stringify({
     model: request.model,
-    max_tokens: request.maxTokens ?? 1024,
-    temperature: request.temperature ?? 1,
+    max_tokens: request.maxTokens ?? 8192,
     system: request.system,
     messages: [{ role: 'user', content: request.user }],
+    ...(traits.sampling && request.temperature !== undefined
+      ? { temperature: request.temperature }
+      : {}),
+    ...(traits.effort ? { output_config: { effort: request.effort ?? 'low' } } : {}),
     ...(stream ? { stream: true } : {})
   });
 }

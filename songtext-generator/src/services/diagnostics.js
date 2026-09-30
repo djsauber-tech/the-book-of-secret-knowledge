@@ -138,7 +138,7 @@ export async function testConnection(providerId, keys, { signal } = {}) {
         model,
         system: 'Antworte mit einem einzigen Wort.',
         user: 'ping',
-        maxTokens: 16,
+        maxTokens: 512,
         temperature: 0
       },
       keys,

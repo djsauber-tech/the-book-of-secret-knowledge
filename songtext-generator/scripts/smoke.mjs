@@ -218,4 +218,38 @@ assert.match(describeFailure(anthropicError(529, 'overloaded_error', '')).headli
 const formatted = formatFailure(anthropicError(401, 'authentication_error', 'invalid x-api-key'));
 assert.match(formatted, /^Anthropic lehnt den API-Key ab\n→ /);
 
-console.log('SMOKE OK — alle 20 Prüfungen bestanden');
+
+
+/* ============ Anfragekörper: Eigenheiten der aktuellen Claude-Modelle ==== */
+
+import { body as anthropicBody } from '../src/services/providers/anthropic.js';
+import { PROVIDERS, modelTraits, defaultModelFor } from '../src/domain/providers.js';
+
+// 21) Modell-IDs ohne Datums-Suffix - ein Suffix quittieren die Anbieter mit 404
+for (const provider of PROVIDERS) {
+  for (const model of provider.models) {
+    assert.doesNotMatch(model.id, /-\d{8}$/, `${model.id} trägt ein Datums-Suffix`);
+  }
+}
+
+// 22) Aktuelle Claude-Modelle lehnen temperature mit HTTP 400 ab
+const opus = JSON.parse(anthropicBody({ model: 'claude-opus-5-5', system: 's', user: 'u', temperature: 1 }, false));
+assert.equal(opus.temperature, undefined, 'temperature darf nicht an Opus 5.5 gehen');
+assert.deepEqual(opus.output_config, { effort: 'low' }, 'Effort ersetzt die Sampling-Steuerung');
+
+const sonnet = JSON.parse(anthropicBody({ model: 'claude-sonnet-5-5', system: 's', user: 'u', temperature: 0.3 }, false));
+assert.equal(sonnet.temperature, undefined, 'auch die Kritik darf kein temperature senden');
+
+// Haiku 4.5 nimmt temperature noch, kennt aber kein effort
+const haiku = JSON.parse(anthropicBody({ model: 'claude-haiku-4-5', system: 's', user: 'u', temperature: 0.3 }, false));
+assert.equal(haiku.temperature, 0.3);
+assert.equal(haiku.output_config, undefined);
+
+// 23) Budget groß genug, dass adaptives Denken nicht den ganzen Platz frisst
+assert.ok(opus.max_tokens >= 4096, `max_tokens zu knapp: ${opus.max_tokens}`);
+
+// 24) Traits haben sichere Vorgaben für unbekannte Modelle
+assert.deepEqual(modelTraits('claude', 'gibt-es-nicht'), { sampling: true, effort: false });
+assert.equal(defaultModelFor('claude'), 'claude-opus-5-5');
+
+console.log('SMOKE OK — alle 24 Prüfungen bestanden');
